@@ -2,14 +2,15 @@
 
 # 🔍 Full-Repo Audit
 
-### The audit pipeline that finds what code review misses — on any stack, in any language.
+### Wide coverage. Thin rounds. Every dimension gets its own round.
 
-**Recon first. Severity-ordered waves. Findings that drive the next wave. New CI gates as the deliverable.**
+**223 audit dimensions, each reviewed in a dedicated round by agents that carry nothing else —
+fixed and verified before the next round begins.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-111827?style=for-the-badge)](#license)
-[![Waves: 14](https://img.shields.io/badge/Waves-14-2563eb?style=for-the-badge)](#what-this-is)
-[![Dimensions: 66](https://img.shields.io/badge/Dimensions-66-7c3aed?style=for-the-badge)](#coverage-map)
-[![Stack: agnostic](https://img.shields.io/badge/Stack-agnostic-059669?style=for-the-badge)](#works-on-your-stack)
+[![Dimensions: 223](https://img.shields.io/badge/Dimensions-223-7c3aed?style=for-the-badge)](#stage-map)
+[![Rounds: one per dimension](https://img.shields.io/badge/Rounds-one%20per%20dimension-2563eb?style=for-the-badge)](#wide-catalog-thin-rounds)
+[![Stack: agnostic](https://img.shields.io/badge/Stack-agnostic-059669?style=for-the-badge)](#works-on-any-stack)
 [![Install: zero deps](https://img.shields.io/badge/Install-zero%20deps-ea580c?style=for-the-badge)](#quick-start)
 
 **English** · [简体中文](README.zh-CN.md)
@@ -22,243 +23,279 @@
 
 A code review looks at a diff. **Nobody looks at the repository.**
 
-So the defects that survive are exactly the ones no diff can show you: the credential sitting in
-git history since 2023, the batch endpoint that forgot the tenant check while its single-record
-sibling remembered, the cache key missing a tenant dimension, the migration that silently makes
-rollback impossible, the CI workflow handing secrets to fork PRs, the 400 tests that would still
-pass if you deleted the feature.
+So the defects that survive are the ones no diff can show: the batch endpoint that forgot the tenant
+check its single-record sibling remembered, the transaction whose lower layer quietly uses a global
+connection, the SSRF guard that never re-validates after a redirect, the tests that still pass if you
+delete the feature.
 
-Then someone says *"let's do a full audit"* — and it goes wrong in one of two ways:
+When teams finally run a "full audit", it fails in one of three ways:
 
 | Failure mode | What actually happens |
 |---|---|
-| 🎲 **The vibe sweep** | An agent is told "review everything", wanders the repo, and returns 40 style opinions and zero exploitable findings. |
-| 🧱 **The checklist binder** | A 600-item enterprise checklist, 80% inapplicable, 0% prioritized. Three days in, the team stops. |
+| 🎲 **The vibe sweep** | One agent is told "review everything" and returns 40 style opinions, zero exploitable findings. |
+| 🌊 **The breadth trap** | A long list of domains, handed out a few at a time to each agent. Every domain gets skimmed. It *looks* thorough and finds almost nothing. |
+| 🧾 **Review now, fix later** | All review first, all fixes at the end. Findings pile up, fixes collide, nothing is verified in between. |
 
-Both fail for the same reason: **no model of what this repository actually is, and no ordering by
-what a finding actually costs.**
+The usual response to the breadth trap is to cut the list. That trades one problem for another:
+**shallow everywhere, or deep in a few places and blind everywhere else.**
 
 ---
 
-## What this is
+## Wide catalog, thin rounds
 
-A **skill** — a packaged audit methodology your agent CLI loads and executes. It profiles the
-repository first, then sweeps it in 14 waves ordered by blast radius, and finishes by turning
-what it found into automated gates so the same class of defect cannot come back.
+Coverage and depth were never in conflict. What conflicts is **the width of a single round.**
+
+- **Coverage** comes from the catalog: 14 stages, 223 fine-grained dimensions.
+- **Depth** comes from the round: one dimension, 3–6 checkpoints, nothing else in the agent's head.
+- **Round count is uncapped.** However many dimensions apply to your repository, that is how many rounds run. Dozens is normal. Two hundred is normal.
 
 ```mermaid
 flowchart LR
-    P0(["🔎 Phase 0<br/>Recon and profile"]) --> W
-
-    subgraph W["⚡ 11 audit waves — ordered by blast radius"]
+    subgraph S["🌊 Wide round · one agent, many domains"]
         direction TB
-        A["W1 · Secrets and supply chain"] --> B["W2 · Security and authorization"]
-        B --> C["W3 · Data, transactions, state"]
-        C --> D["W4 · Runtime resilience and o11y"]
-        D --> E["W5 · Interfaces and contracts"]
-        E --> F["W6 · Performance and resources"]
-        F --> G["W7 · Experience and a11y"]
-        G --> H["W8 · Build, CI, delivery"]
-        H --> I["W9 · Test system"]
-        I --> J["W10 · Code health and docs"]
-        J --> K["W11 · Governance and gates"]
+        SA["🤖 agent"] --> S1["auth"]
+        SA --> S2["SSRF"]
+        SA --> S3["transactions"]
+        SA --> S4["perf · a11y · +5"]
+        S1 --> SR["Every domain skimmed<br/>findings unconfirmed"]
+        S2 --> SR
+        S3 --> SR
+        S4 --> SR
     end
 
-    W --> X(["🧹 W12<br/>Horizontal<br/>expansion"])
-    X --> Y(["🔧 W13<br/>Tiered<br/>fixes"])
-    Y --> Z(["✅ W14<br/>Gates<br/>and report"])
+    subgraph F["🎯 Thin round · one dimension only"]
+        direction TB
+        FA["🤖 agent"] --> F1["S02.12 SSRF only"]
+        F1 --> F2["reads every outbound call site in full"]
+        F2 --> F3["follows the redirect and DNS path"]
+        F3 --> FR["Confirmed finding<br/>file:line · repro · fix"]
+    end
 
-    classDef phase fill:#1e293b,stroke:#0f172a,color:#f8fafc,font-weight:bold
-    classDef wave fill:#eff6ff,stroke:#2563eb,color:#1e3a8a
-    class P0,X,Y,Z phase
-    class A,B,C,D,E,F,G,H,I,J,K wave
+    classDef bad fill:#fef2f2,stroke:#dc2626,color:#7f1d1d
+    classDef good fill:#f0fdf4,stroke:#16a34a,color:#14532d
+    classDef agent fill:#1e293b,stroke:#0f172a,color:#f8fafc
+    class S1,S2,S3,S4,SR bad
+    class F1,F2,F3,FR good
+    class SA,FA agent
 ```
 
-Every wave dispatches 3–8 **read-only** agents in parallel. Review and fix are separate roles —
-an agent that edits while it reviews cannot be audited, and cannot be conflict-controlled.
+A dimension is sized so one agent can hold all of it in mind at once. "Security" is not a dimension.
+"Injection" is not a dimension. **"SSRF and outbound requests"** is — five checkpoints, one mental model,
+one round.
 
 ---
 
-## Forged in production, not in a blog post
+## Forged in production — including the failures
 
-This is not a checklist someone imagined. The methodology was distilled from real audit
-campaigns — **over ten billion tokens of agent work**, run against **codebases past the
-million-line mark**, then rewritten into the sequence that actually worked.
+The method was distilled from real audit campaigns: **over ten billion tokens of agent work**, run
+against **codebases past the million-line mark**.
 
 <div align="center">
 
-| 🔥 Campaign scale | 🎯 What it caught | 🧬 What got distilled |
-|:---|:---|:---|
-| 10B+ tokens of audit runs | SSRF bypass past an existing allowlist | 14 waves, re-derived by severity |
-| 1M+ line repositories | 10+ transaction-atomicity defects | 66 dimensions, each a real checklist |
-| 14 rounds · 68+ agents | 11 missing error boundaries | 4 prompt templates that hold up |
-| 200+ findings fixed end to end | 13 tests that passed no matter what | The anti-patterns that wasted the most money |
+| 🔥 Campaign scale | 🎯 What it caught |
+|:---|:---|
+| 10B+ tokens of audit runs | SSRF bypass past an existing allowlist |
+| 1M+ line repositories | 10+ transaction-atomicity defects |
+| 14 rounds · 68+ agents | 11 missing error boundaries |
+| 200+ findings fixed end to end | 13 tests that passed no matter what |
 
 </div>
 
-The ordering in this repo is **the correction of a mistake**: v1 audited UI first. Every UI fix
-was then invalidated by the deeper contract and data fixes that followed. Secrets now go first,
-UI goes late, and tests are repaired *before* the fix wave — so fixes land against gates you can
-trust. [Read the full rationale →](CHANGELOG.md)
+Both extremes were run on real repositories before this design existed:
+
+| Version | Shape | Result |
+|---|---|---|
+| **v1** | 14 focused rounds, fixes inside each round | Worked well. Coverage capped by 14 rounds. |
+| **v2** | 66 dimensions packed into 11 wide waves, fixes deferred to the end | Markedly worse. Attention spread thin; effectively one giant round. Rolled back. |
+| **v3** | v2's breadth, v1's thinness — 223 dimensions, **one per round**, fixes inside each round | This repository. |
+
+[Read what went wrong and why →](CHANGELOG.md)
+
+---
+
+## Five rules
+
+Break any one of them and the campaign collapses back into a shallow sweep.
+
+1. **One round = one dimension.** Never merge dimensions into a round, even related ones.
+2. **Rounds run strictly in series.** A round is not opened until the previous one is fixed, verified and recorded.
+3. **Agents carry only the current dimension.** When a round needs several agents, they shard by *files* — never by topic.
+4. **Fixes never pile up.** What a round finds, that round fixes.
+5. **To go faster, choose fewer — never go wider.** Run selected stages or dimensions. Never merge dimensions to cut the round count.
+
+---
+
+## How it runs
+
+```mermaid
+flowchart TB
+    P0(["🧭 Phase 0 · verification commands, repo profile, progress.md"])
+
+    subgraph A["Stages 1-7 · from the surface down"]
+        direction LR
+        S01["S01<br/>Feature and UI<br/>20"] --> S02["S02<br/>Deep cross<br/>39"] --> S03["S03<br/>Infrastructure<br/>28"] --> S04["S04<br/>Blind spots<br/>19"] --> S05["S05<br/>QA gaps<br/>14"] --> S06["S06<br/>Test types<br/>13"] --> S07["S07<br/>Test cleanup<br/>8"]
+    end
+
+    subgraph B["Stages 8-14 · normalize, verify, close"]
+        direction LR
+        S08["S08<br/>Normalization<br/>16"] --> S09["S09<br/>Integrity<br/>5"] --> S10["S10<br/>Dead code<br/>12"] --> S11["S11<br/>Remaining<br/>24"] --> S12["S12<br/>Governance<br/>11"] --> S13["S13<br/>DevEx<br/>9"] --> S14["S14<br/>Final<br/>5"]
+    end
+
+    END(["📦 REPORT.md · commit · PR"])
+
+    P0 --> A
+    A --> B
+    B --> END
+
+    classDef phase fill:#1e293b,stroke:#0f172a,color:#f8fafc,font-weight:bold
+    classDef stage fill:#eff6ff,stroke:#2563eb,color:#1e3a8a
+    classDef gate fill:#f0fdf4,stroke:#16a34a,color:#14532d
+    class P0,END phase
+    class S01,S02,S03,S04,S05,S06,S07,S08,S10,S11,S12,S13 stage
+    class S09,S14 gate
+```
+
+Each stage then expands into serial rounds, one per dimension. S02 alone is 39 rounds: `S02.01 auth coverage → S02.02 session lifecycle → … → S02.12 SSRF → … → S02.39 bundle size`.
+
+The stage order comes straight from the production campaign, because stages feed each other: S05
+re-checks S01–S04's fixes, S07 cleans up the tests S06 diagnosed, S09 verifies everything before S10
+starts deleting code, S12 turns every earlier stage's hot patterns into gates.
+
+Every round runs the same closed loop:
+
+```mermaid
+flowchart TD
+    T["① Take the next dimension · read only its section"] --> L["② Locate targets · none found: skip with reason"]
+    L --> SH["③ Shard by files if too much for one agent"]
+    SH --> D["④ Dispatch read-only agents · this dimension only"]
+    D --> H{"Same issue in 3+ places?"}
+    H -->|yes| X["⑤ Horizontal agent sweeps the whole repo"]
+    H -->|no| FX
+    X --> FX["⑥ Fix everything this round found"]
+    FX --> V{"⑦ Affected tests and lint green?"}
+    V -->|no| FX
+    V -->|yes| R["⑧ Record the result in progress.md"]
+    R --> N(["Next round"])
+
+    classDef step fill:#eff6ff,stroke:#2563eb,color:#1e3a8a
+    classDef gate fill:#fefce8,stroke:#ca8a04,color:#713f12
+    classDef done fill:#1e293b,stroke:#0f172a,color:#f8fafc
+    class T,L,SH,D,X,FX,R step
+    class H,V gate
+    class N done
+```
+
+At the end of every stage: **full lint, typecheck, test and build**, plus a stage summary of at most
+30 lines whose hot patterns are written into the prompts of related dimensions in later stages.
+
+---
+
+## Stage map
+
+| Stage | Theme | Dimensions | A few of its rounds |
+|---|---|:---:|---|
+| **S01** | Feature and interaction layer | 20 (+8 no-UI) | primary action paths · forms · destructive-action safety · drag and drop · streaming UI · realtime reliability · upload flow |
+| **S02** | Deep cross review | 39 | auth coverage · session lifecycle · IDOR · multi-tenant isolation · SQL injection · SSRF · XSS · transaction boundaries · TOCTOU · idempotency · silent error swallowing · timeouts · N+1 |
+| **S03** | Infrastructure | 28 | type escape hatches · unvalidated boundary data · schema drift · fake CI gates · CI secrets exposure · migration reversibility · stuck states · API versioning · Dockerfile · IaC |
+| **S04** | Blind-spot sweep | 19 | workspace secrets · git-history secrets · keys in client bundles · default-secret fallbacks · README executability · repo residue |
+| **S05** | QA gap check | 14 | fix-induced signature changes · user journeys (one round each) · fault injection · TODO triage · audit events · alerting |
+| **S06** | Test-type deep dive | 13 | weak assertions · mutation spot checks · mock leakage · flaky factors · authorization-matrix tests |
+| **S07** | Test cleanup | 8 | text-scanner test migration · hardcoded-count tests · leaked `only` · oversized snapshots |
+| **S08** | Normalization | 16 | file naming · error-handling style · `??` vs `\|\|` · suppression comments · cross-package signatures |
+| **S09** | Integrity check | 5 | full typecheck · lint · test · build · cross-stage conflict detection |
+| **S10** | Dead code and decoupling | 12 | unused exports · duplicated permission logic · over-abstraction · splitting large files by responsibility |
+| **S11** | Remaining blind spots | 24 | dependency vulnerabilities · supply chain · PII in logs · graceful shutdown · rate limits · ReDoS · backups · timezones · money precision · encoding |
+| **S12** | Cross-cutting governance | 11 | error-code taxonomy · log format · outbound call wrappers · hot patterns turned into gates · dead gates |
+| **S13** | Developer experience | 9 | CLI help and exit codes · script robustness · from-scratch setup test |
+| **S14** | Final validation | 5 | full-chain regression · fixed-item regression check · report and PR |
+
+Dimensions that don't apply — no UI, no database, no containers — are marked skipped with a reason in
+`progress.md` during Phase 0. A small library might run 60 rounds; a large product monorepo, 200+.
+
+---
+
+## Built for campaigns that outlive a session
+
+Two hundred rounds will not fit in one context window, so the skill is designed to be resumed.
+
+```markdown
+# Audit progress (start commit: abc1234)
+
+## S02 Deep cross review
+- [x] S02.05 IDOR and resource ownership — High 2 / Medium 1, 3 fixed
+- [-] S02.23 Keyboard access and focus — no UI
+- [ ] S02.12 SSRF and outbound requests
+```
+
+`audit/progress.md` is the only state. To continue — after a context compaction, a new session, or a
+week off — read it and the latest stage summary, then start from the first `[ ]`. Nothing already
+`[x]` is re-run.
 
 ---
 
 ## Business value
 
 > One cross-tenant authorization defect reaching production costs more than every audit you will
-> ever run. This pipeline is built around that asymmetry.
+> ever run.
 
 <table>
 <tr><td width="33%" valign="top">
 
 ### 💼 Before a release
-Ship with a written answer to *"can we release?"* — severity-counted, with the residual risk
-named. Not a vibe.
+A written answer to *"can we ship?"* — every dimension reviewed or skipped with a reason, every
+unfixed item listed with its cause.
 
 </td><td width="33%" valign="top">
 
 ### 🤝 Before due diligence
-Hand over a dimension coverage table where every skipped dimension records **why** it was
-skipped. Auditable, not aspirational.
+A progress file that shows, dimension by dimension, what was examined, what was found, and what
+was verified green.
 
 </td><td width="33%" valign="top">
 
 ### 🏗️ Taking over a codebase
-Turn "nobody knows what's in here" into a profile, a module map, a hotspot ranking and a
-prioritized backlog in one pass.
+From "nobody knows what's in here" to a repository read, fixed and re-verified one dimension at a
+time.
 
 </td></tr>
 <tr><td valign="top">
 
 ### 🔐 Before exposing an API
-Every external entry point enumerated and walked through authn, authz, injection, abuse limits
-and privacy — one by one.
+Seventeen separate security rounds — auth coverage, sessions, IDOR, tenancy, each injection class,
+SSRF, CSRF, crypto, webhooks.
 
 </td><td valign="top">
 
-### 🧾 Compliance & supply chain
-Secrets in history, license conflicts, unpinned actions, install-time scripts, SBOM gaps — the
-questions auditors actually ask.
+### 🧾 Compliance and supply chain
+Secrets in git history, license conflicts, unpinned CI actions, install-time scripts, PII in logs,
+data deletion paths.
 
 </td><td valign="top">
 
 ### 📉 Stopping the bleeding
-W11 converts findings into lint rules, contract tests and CI checks, so next quarter's audit
-doesn't re-find this quarter's bugs.
+S12 turns every stage's hot patterns into lint rules, tests and CI checks — and hunts gates that
+only look alive.
 
 </td></tr>
 </table>
 
-**The economics:** an audit wave is minutes of compute. A cross-tenant data leak is an incident
-report, a customer notification, and a quarter of trust. The pipeline is deliberately ordered so
-the cheapest scans catch the most expensive failures first.
-
 ---
 
-## How a finding earns its place
+## Works on any stack
 
-Most audit output is noise because anything that *looks* odd gets reported. Here, a signal has to
-survive a gauntlet before it is allowed to cost you attention.
-
-```mermaid
-flowchart TD
-    S["📡 Raw signal<br/>grep hit · tool output · gut feeling"] --> R{"Read the actual code"}
-    R -->|"no concrete consequence"| DROP["🗑️ Dropped<br/>style preference ≠ finding"]
-    R -->|"consequence + trigger condition"| FIND["📌 Finding<br/>file:line · impact · repro"]
-
-    FIND --> PAT{"Same root cause<br/>in ≥3 places?"}
-    PAT -->|yes| SWEEP["🧹 Pattern finding<br/>swept repo-wide, full hit list"]
-    PAT -->|no| PT["📍 Point finding"]
-
-    SWEEP --> SEV["⚖️ Severity by consequence<br/>escalate on trust boundary<br/>de-escalate if unreachable"]
-    PT --> SEV
-    SEV --> FIX["🔧 Failing test first,<br/>then the fix"]
-    FIX --> GATE["🛡️ Lint rule / contract test / CI check<br/>so it cannot return"]
-
-    classDef drop fill:#fef2f2,stroke:#dc2626,color:#7f1d1d
-    classDef keep fill:#f0fdf4,stroke:#16a34a,color:#14532d
-    classDef work fill:#eff6ff,stroke:#2563eb,color:#1e3a8a
-    class DROP drop
-    class GATE,FIX keep
-    class S,R,FIND,PAT,SWEEP,PT,SEV work
-```
-
-Hard rules enforced on every agent: **`file:line` or it doesn't exist.** A consequence and a
-trigger condition, or it doesn't get a severity. And every agent must also report what it checked
-and found **clean** — without that, "we audited it" and "we skipped it" are indistinguishable.
-
----
-
-## Findings drive the next wave
-
-This is the part that separates an audit from 14 unrelated scans. After every wave the
-orchestrator — not an agent — merges findings, extracts patterns, and **rewrites the prompts of
-later waves**.
-
-```mermaid
-flowchart LR
-    O(["🎛️ Orchestrator<br/>assigns non-overlapping scopes"])
-    A1["🤖 read-only agent · scope 1"]
-    A2["🤖 read-only agent · scope 2"]
-    A3["🤖 read-only agent · scope 3"]
-    A4["🤖 read-only agent · scope N"]
-    RP["📄 Wave reports<br/>findings · clean items · patterns"]
-    LED[("📒 Findings ledger<br/>stable IDs · status flow")]
-    O2(["🎛️ Merge · dedupe · extract leads"])
-    NEXT(["⏭️ Next wave<br/>prompts rewritten"])
-    EXP(["🧹 W12 expansion queue"])
-    ESC(["🙋 Escalated to a human"])
-
-    O --> A1
-    O --> A2
-    O --> A3
-    O --> A4
-    A1 --> RP
-    A2 --> RP
-    A3 --> RP
-    A4 --> RP
-    RP --> LED
-    LED --> O2
-    O2 --> NEXT
-    O2 --> EXP
-    O2 --> ESC
-
-    classDef orch fill:#1e293b,stroke:#0f172a,color:#f8fafc,font-weight:bold
-    classDef agent fill:#f5f3ff,stroke:#7c3aed,color:#4c1d95
-    class O,O2 orch
-    class A1,A2,A3,A4 agent
-```
-
-**Example:** W2 finds authorization checks scattered across handlers instead of centralized. That
-single observation is injected into W5 (module boundaries — *why is there no policy layer?*), W9
-(*where is the authorization matrix test?*) and W11 (*make an architecture lint rule enforce it*).
-One finding, three waves deeper.
-
----
-
-## Works on your stack
-
-Phase 0 runs a read-only recon script and builds a repository profile: languages, package
-managers, workspace layout, real build/test/lint commands (taken from CI, not guessed), module
-→ role map, data layer, runtime shape, 90-day churn hotspots, existing governance.
-
-Dimensions then describe scope by **role** — entry layer, trust boundary, persistence layer,
-presentation layer, delivery layer — and the profile maps roles to this repo's real paths. That
-is why there are no framework names hardcoded anywhere in the skill.
+No dimension names a framework. Each has a **Locate** line that says *what* to look for — "every query
+that reads a resource by ID", "every outbound HTTP call" — and the round finds *where* in your
+repository using a read-only profile and search.
 
 <div align="center">
 
-`Node/TS` · `Python` · `Go` · `Rust` · `Java/Kotlin` · `Ruby` · `PHP` · `.NET` · `Elixir` · `Swift` · `Shell` · `Terraform` · `K8s/Helm`
-
-*Per-ecosystem command maps ship in `references/recon-playbook.md`. Polyglot monorepos are profiled per ecosystem.*
+`Node/TS` · `Python` · `Go` · `Rust` · `Java/Kotlin` · `Ruby` · `PHP` · `.NET` · `Elixir` · `Swift` · `Terraform`
 
 </div>
 
-Profile time on a 2,700-file monorepo: **7.7 seconds.** It installs nothing and writes nothing.
-
-Dimensions that don't apply are marked **not applicable, with a reason** — no frontend, no a11y
-wave; managed database, the backup dimension records who owns it instead. Applicability is
-recorded, never silently skipped.
+Verification commands are read from your CI config first, then your task runner, then ecosystem
+defaults. A gate that can't be found is recorded as missing — never invented. The profile script takes
+**under 8 seconds** on a 2,700-file monorepo, installs nothing and writes nothing.
 
 ---
 
@@ -274,33 +311,16 @@ cp -r full-repo-audit/.agents/skills/full-repo-audit ~/.claude/skills/
 | Claude Code | `~/.claude/skills/full-repo-audit/` (global) or `.claude/skills/…` (per project) |
 | CLIs using `.agents` | `.agents/skills/full-repo-audit/` |
 
-Then, from the repository you want audited:
+From the repository you want audited:
 
 ```
-/full-repo-audit
-/full-repo-audit --scope=services/api --depth=deep
-/full-repo-audit --waves=W1,W2,W9 --fix=none
+/full-repo-audit                  # every applicable dimension, all 14 stages
+/full-repo-audit S02 S11          # selected stages
+/full-repo-audit S02.12 S11.17    # selected dimensions
 ```
 
-| Parameter | Default | Effect |
-|---|---|---|
-| `--scope=<path…>` | whole repo | limit to a subtree |
-| `--waves=<ids>` | `all` | run selected waves only |
-| `--depth=quick\|standard\|deep` | `standard` | agents per wave + severity floor |
-| `--fix=none\|critical\|all` | `critical` | what gets fixed vs only reported |
-| `--autonomous` | off | skip the confirmation before commit/push/PR |
-
-Requirements: `git`, `bash`, and whatever the audited repo already needs for its own
-lint/typecheck/test/build. **No dependencies to install, no service to sign up for.**
-
-Repo size sets the agent budget automatically:
-
-| Tier | Source files | Agents per wave | Strategy |
-|---|---|---|---|
-| **S** | < 200 | 3–4 | read everything |
-| **M** | 200–1,500 | 5–6 | index all, deep-read risk paths |
-| **L** | 1,500–6,000 | 6–8 | shard by module |
-| **XL** | > 6,000 | 6–8 + rounds | rank by risk, deep-dive top 30% |
+Requirements: `git`, `bash`, and whatever your repository already needs to lint, typecheck, test and
+build. **No dependencies. No service. No account.**
 
 ---
 
@@ -308,99 +328,37 @@ Repo size sets the agent budget automatically:
 
 ```
 audit/
-├── 00-profile.md         ← repository profile: stack, commands, module→role map, hotspots
-├── 00-plan.md            ← applicability matrix · agent assignment · sampling strategy
-├── findings.md           ← the ledger: stable IDs, severity, status open→fixed→verified
-├── expansion-queue.md    ← patterns awaiting the repo-wide sweep
-├── deferred.md           ← what was NOT fixed, why, suggested owner and deadline
-├── W1/ … W14/            ← one report per agent: findings, clean items, open questions
-└── REPORT.md             ← executive summary · coverage table · fixes · new gates · residual risk
+├── profile.md          ← repository profile: structure, entry points, data layer, tests, hotspots
+├── progress.md         ← every dimension: done, skipped with reason, or pending — the resume point
+├── S01-summary.md      ← per stage: findings and fixes by dimension, unfixed items with reasons,
+├── …                      hot patterns carried forward, full-gate results
+├── S14-summary.md
+└── REPORT.md           ← all stages merged · unfixed list · new gates · items needing a human
 ```
 
-`REPORT.md` opens with the only line most readers need: **can this ship, and what is the largest
-remaining risk.** Then the coverage table — every dimension marked audited, sampled (with scope)
-or not applicable (with reason) — which is what makes "zero blind spots" a verifiable claim
-rather than a slogan.
-
-A finding in the ledger looks like this:
+Every finding carries a location and a way to reproduce it:
 
 ```markdown
-### [F-B2-003] [High] Batch archive endpoint skips the tenant ownership check
-
-- Dimension: B2 · authorization & multi-tenant isolation
-- Location:  src/api/archive.ts:64-78  (same pattern: src/api/restore.ts:41)
-- Impact:    any authenticated user can archive another tenant's records
-- Trigger:   send an arbitrary id array — no special privilege needed
-- Evidence:  update at archive.ts:71 has `WHERE id IN (...)` and no tenant_id
-- Fix:       force tenant scoping in the repository layer; call archiveForTenant()
-- Regression: test "user A archives tenant B's ids → 403, rows unchanged"
-- Hardening: architecture lint — api layer may not call db.update directly
+## [High] Batch archive endpoint skips the tenant ownership check
+**File:** `src/api/archive.ts:71`
+**Problem:** the update filters on `id IN (...)` only — any signed-in user can archive another tenant's records
+**Repro:** call the batch endpoint with ids belonging to a different tenant
+**Fix:** scope the update by the session tenant, as the single-record endpoint already does
 ```
-
----
-
-## Coverage map
-
-66 dimensions, each with its own checklist. Not a keyword list — the security file alone walks
-every external entry point through eight dimensions, item by item.
-
-| Wave | Dimensions |
-|---|---|
-| **W1** Secrets & supply chain | secrets & credential exposure · dependency vulnerabilities · supply-chain integrity · license compliance |
-| **W2** Security | authn & sessions · authz & multi-tenant isolation · injection & input validation · crypto & key handling · web/platform hardening · abuse & quotas · privacy, PII & retention · webhooks & integrations |
-| **W3** Data & state | transactions & atomicity · migrations & compatibility · schema, indexes & queries · concurrency & races · state machines · cache coherence · backup, restore & data-loss paths · time, precision, units & encoding |
-| **W4** Runtime | error handling · failure modes & recovery · resource lifecycle & shutdown · observability · config & feature flags |
-| **W5** Contracts | type safety · API contracts & versioning · module boundaries · single-source-of-truth drift · plugin/skill/tool contracts |
-| **W6** Performance | algorithmic hot paths · I/O & network efficiency · client performance budgets · build & startup · benchmarks & regression guards |
-| **W7** Experience | flows & information architecture · accessibility WCAG AA · i18n/l10n · responsive & cross-platform · empty/loading/error/offline states · CLI & library DX · copy consistency |
-| **W8** Delivery | build reproducibility · CI/CD correctness & security · containers & IaC · deploy & rollback · release & versioning discipline |
-| **W9** Tests | risk-based coverage gaps · assertion strength · isolation, fixtures & determinism · suite structure & cost · missing test types · test-debt cleanup |
-| **W10** Health & docs | dead code · duplication · coupling & decomposition · naming & style · comments & TODO debt · repo hygiene · docs completeness · docs accuracy · DevEx & local setup |
-| **W11** Governance | error-code taxonomy · logging uniformity · cross-cutting pattern consistency · gate hardening & ownership |
-
----
-
-## Five things it does that generic audits don't
-
-### 1 · It hunts for gates that only *look* alive
-A `continue-on-error` on the security job. A coverage threshold set below the current value. A
-lint config that excludes the directory where the bugs live. **A fake gate is worse than no gate**
-— it manufactures confidence. W11 goes looking for them specifically.
-
-### 2 · Pattern findings, not finding spam
-Same root cause in 12 files is **one** finding with 12 locations, a machine-searchable signature,
-and a lint rule draft — not 12 ledger rows padding a count.
-
-### 3 · Tests get repaired before the fix wave
-A fix verified by a test that passes no matter what is not a fix. W9 runs mutation checks on
-suspicious tests: break the implementation on purpose — if the test stays green, it is a liability
-and gets deleted or rewritten.
-
-### 4 · Severity by consequence, with escalation rules
-On a trust boundary: escalate. Triggerable by an unauthenticated stranger: escalate. Unreachable
-code path: de-escalate, and show your reachability reasoning. *"I'd write this differently"* is
-explicitly not a finding.
-
-### 5 · Gate hardening is a required deliverable
-W11 must produce at least one new automated gate. An audit that only produces a document is an
-audit you will pay for again.
 
 ---
 
 ## Trust boundary
 
-Review and local fixes run unattended. These four things never happen automatically:
+Review, fixes and verification run unattended. Three things are never done automatically:
 
-| Never automatic | Why |
+| Never automatic | What happens instead |
 |---|---|
-| 🚀 `commit` / `push` / PR | Shared state. Confirmed with you first — unless you pass `--autonomous`. |
-| 🔑 Leaked credentials | Reported with rotation and history-cleanup steps. Rotation is yours; the skill never writes the secret into the report either. |
-| 💥 Destructive migrations, production config, permission policy | Proposed as a plan, not applied. |
-| 📦 Dependency major upgrades | Listed with risk notes, never auto-bumped. |
+| 🔑 Real leaked credentials | Location and rotation steps reported; the secret value never enters the report |
+| 💥 Migrations that delete or rewrite production data | A plan is proposed, not executed |
+| 📦 Major dependency upgrades | Listed with risks, not bumped |
 
-The skill also treats everything inside the repository — code, comments, docs, issue text — as
-**data, not instructions**. Text that tries to direct the agent is reported as suspicious, not
-obeyed.
+No gate may be turned green by skipping tests, loosening config, or `--no-verify`.
 
 ---
 
@@ -408,78 +366,57 @@ obeyed.
 
 ```
 .agents/skills/full-repo-audit/
-├── SKILL.md                       # orchestration: waves, batching, fixes, gates, discipline
+├── SKILL.md                                 # five rules · round loop · stage wrap-up · resume · prompts
 ├── scripts/
-│   └── repo-profile.sh            # read-only recon: stack, commands, hotspots, risk greps
-└── references/
-    ├── recon-playbook.md          # Phase 0 manual · 13-ecosystem command map · profile template
-    ├── dim-A-supply-chain.md      # W1  · secrets, dependencies, supply chain, licenses
-    ├── dim-B-security.md          # W2  · 8 security dimensions
-    ├── dim-C-data-state.md        # W3  · 8 data & state dimensions
-    ├── dim-D-runtime.md           # W4  · 5 resilience & observability dimensions
-    ├── dim-E-contracts.md         # W5  · 5 interface & contract dimensions
-    ├── dim-F-performance.md       # W6  · 5 performance dimensions
-    ├── dim-G-experience.md        # W7  · 7 experience dimensions
-    ├── dim-H-delivery.md          # W8  · 5 delivery & ops dimensions
-    ├── dim-I-tests.md             # W9  · 6 test-system dimensions
-    ├── dim-J-health-docs.md       # W10 · 9 code-health, docs & DevEx dimensions
-    ├── dim-L-governance.md        # W11 · 4 governance dimensions
-    ├── severity-and-reporting.md  # severity rubric · finding format · ledger · report template
-    └── agent-playbook.md          # 4 prompt templates · parallelism · conflicts · anti-patterns
+│   └── repo-profile.sh                      # read-only repository profile
+└── references/stages/
+    ├── S01-feature-ui.md                    # each file: one stage's dimensions,
+    ├── S02-deep-cross.md                    # each dimension: Locate + 3–6 checkpoints
+    ├── …
+    └── S14-final-validation.md
 ```
 
-Progressive disclosure by design: `SKILL.md` orchestrates, and each agent loads only the
-checklist for its own dimension.
+The orchestrator reads **only the current dimension's section** of a stage file, so nothing from other
+dimensions competes for the agent's attention.
 
 ---
 
 ## FAQ
 
 <details>
-<summary><b>How long does a full run take?</b></summary>
+<summary><b>Isn't 200 rounds wasteful? Why not merge related dimensions?</b></summary>
 
-Phase 0 is seconds. The audit waves scale with repo size and depth: an S-tier repo on
-`--depth=quick` is a short session; an XL monorepo on `--depth=deep` is a campaign you run
-across multiple sessions. `--waves` and `--scope` exist so you can spend the budget where it
-matters — W1, W2 and W9 alone already cover the findings that hurt most.
+Merging is exactly what v2 did, and it performed markedly worse. A round on a dimension with no issues
+is cheap — the agent confirms and moves on. A round that merges five dimensions is expensive *and*
+shallow. Thin rounds cost more wall-clock time; wide rounds cost findings.
 </details>
 
 <details>
-<summary><b>Will it wreck my working tree?</b></summary>
+<summary><b>Can rounds run in parallel?</b></summary>
 
-Audit agents are read-only. The fix wave shards file ownership so two agents never hold the same
-file, and a dirty working tree is stashed or committed before any batch fix — mixing your
-in-progress work with automated fixes is not allowed. Gates must be green before anything is
-committed, and `--no-verify`-style bypasses are forbidden.
+No. Round N's fixes change the code round N+1 reads, and later stages depend on earlier ones. Inside a
+single round, multiple agents may run in parallel — but only as file shards of the same dimension.
 </details>
 
 <details>
-<summary><b>What if a fix turns out to be wrong?</b></summary>
+<summary><b>How long does a full campaign take?</b></summary>
 
-Every Critical/High fix ships with a failing-test-first requirement, so a fix that doesn't fix
-anything is visible immediately. If a repair introduces a new failure, the rule is to revert
-rather than stack another patch, reopen the finding, and record why the first attempt failed.
+Long, by design. Expect it to span several sessions; `progress.md` is the handoff. For something
+quicker, pick stages or dimensions — `/full-repo-audit S02 S04 S11` covers most security and supply-chain
+risk — rather than making rounds wider.
 </details>
 
 <details>
-<summary><b>Can I run only the security part?</b></summary>
+<summary><b>Will it mix its fixes into my uncommitted work?</b></summary>
 
-`--waves=W1,W2 --fix=none` gives you a security and supply-chain report with no code changes.
-</details>
-
-<details>
-<summary><b>Does it work on a language not in the list?</b></summary>
-
-Yes — the dimensions are language-independent; only the command map is ecosystem-specific. For an
-unlisted stack, Phase 0 records its commands from the repo's own scripts and CI config. If a
-command can't be determined, it is recorded as unknown and becomes a finding instead of a guess.
+No. Uncommitted changes are stashed or committed in Phase 0 and the starting commit is recorded, so
+every change the audit makes can be diffed.
 </details>
 
 <details>
 <summary><b>Is this a SaaS? Does it phone home?</b></summary>
 
-No. It is Markdown and one read-only shell script in your repository. Nothing is uploaded,
-nothing is installed, no account exists.
+No. It is Markdown and one read-only shell script living in your repository.
 </details>
 
 ---
@@ -490,8 +427,8 @@ MIT — use it commercially, modify it, ship it inside your own tooling. No attr
 
 <div align="center">
 
-**[Rationale & v1→v2 migration](CHANGELOG.md)** · **[简体中文](README.zh-CN.md)**
+**[Changelog and lessons learned](CHANGELOG.md)** · **[简体中文](README.zh-CN.md)**
 
-*Built from battle scars. Every wave earned its position by failing in a different order first.*
+*Cover everything. Look at one thing at a time.*
 
 </div>
